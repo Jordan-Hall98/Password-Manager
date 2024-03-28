@@ -2,11 +2,13 @@ from tkinter import *
 from tkinter import messagebox
 from random import choice,randint,shuffle
 import pyperclip
+import json
 
 USER_EMAIL = ""
 
 
 # ---------------------------- PASSWORD GENERATOR ------------------------------- #
+
 def generate_password():
     '''Generate a random password between 16 and 22 characters long'''
     letters = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
@@ -28,6 +30,32 @@ def generate_password():
     password_input.insert(END, string=password)
     pyperclip.copy(password)
 
+# ---------------------------- FIND PASSWORD ------------------------------- #
+
+def find_password():
+    '''Searches database for a password relating to a website'''
+    website = website_input.get()
+    email = email_input.get()
+
+    try:
+        with open("data.json","r") as data_file:
+            data = json.load(data_file)
+
+    except FileNotFoundError:
+        messagebox.showwarning(title="No Saved Passwords",message="You have no saved passwords currently")
+
+    else:
+        if len(website) <1:
+            messagebox.showwarning(title="Website Error",message=f"You have not inputted a website.")
+    
+        elif website in data:
+                email = data[website]["email"]
+                password = data[website]["password"]
+                messagebox.showwarning(title=f"{website}",message=f"Email: {email} \nPassword: {password} \nPassword copied")
+                pyperclip.copy(password)
+        else:
+            messagebox.showwarning(title="Invalid Key",message=f"You have not saved a password for {website}")
+    
 # ---------------------------- SAVE PASSWORD ------------------------------- #
 
 def save_password():
@@ -35,23 +63,38 @@ def save_password():
     website = website_input.get()
     email = email_input.get()
     password = password_input.get()
-    
-    if len(website) <1:
-        messagebox.showwarning(title="No Website Entered",message="Please enter a website and try again")
-    elif len(email) <1:
-        messagebox.showwarning(title="No Email Entered",message="Please enter your email and try again")
-    elif len(password) <1:
-        messagebox.showwarning(title="No Password Entered",message="Please enter a password and try again")
-    else:
-         is_okay = messagebox.askokcancel(title=website,message=f"These are the details entered: \nEmail: {email}\n"
-                        f"Password: {password} \nIs it ok to save?")
+    new_data = {
+        website: {
+            "email": email,
+            "password":password,
+            }
+        }
 
-    if is_okay:
-        with open("data.txt", "a") as data_file:
-            data_file.write(f"{website}  |  {email}  |  {password}\n")
+    if len(website) <1 or len(email) <1 or len(password) <1:
+        messagebox.showwarning(title="Missing Information",message="Please leave no fields blank")
+    else:
+        try:
+            with open("data.json", "r") as data_file:
+                #Reading old data
+                data = json.load(data_file)
+                
+        except FileNotFoundError:
+            with open("data.json","w") as data_file:        
+                #Creating the file
+                json.dump(new_data, data_file, indent=4)
+
+        else:
+            #Updating old data with new data
+            data.update(new_data)
+
+            with open("data.json","w") as data_file:        
+                #Saving updated data
+                json.dump(data, data_file, indent=4)      
+        
+        finally:
             website_input.delete(0,END)
             password_input.delete(0, END)
-        
+
 # ---------------------------- UI SETUP ------------------------------- #
 
 
@@ -62,7 +105,7 @@ window.config(padx=50,pady=50)
 
 
 canvas = Canvas(width=147, height=150)
-logo_img = PhotoImage(file="logo.png")
+logo_img = PhotoImage(file="Day 29\logo.png")
 canvas.create_image(100,100,image=logo_img)
 canvas.grid(column=1,row=0)
 
@@ -78,11 +121,11 @@ password_label.grid(column=0,row=3)
 
 #Create Entry bars
 
-website_input = Entry(width=42)
-website_input.grid(column=1,row=1,columnspan=2)
+website_input = Entry(width=24)
+website_input.grid(column=1,row=1)
 website_input.focus()
 
-email_input = Entry(width=42)
+email_input = Entry(width=43)
 email_input.grid(column=1,row=2,columnspan=2)
 email_input.insert(END, USER_EMAIL)
 
@@ -92,6 +135,9 @@ password_input.grid(column=1,row=3)
 
 generate_password_button = Button(text="Generate Password",command=generate_password)
 generate_password_button.grid(column=2,row=3)
+
+search_button = Button(text="Search",command=find_password,width=15)
+search_button.grid(column=2,row=1)
 
 add_button = Button(text="Add",width=36,command=save_password)
 add_button.grid(column=1,row=4,columnspan=2)
